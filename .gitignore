@@ -2,3 +2,6 @@ dataset/*/**
 !dataset/*/
 __pycache__
 .DS_Store
+/dataset/*
+!/dataset/ddos_sampled_dataset.npy
+!/dataset/sythesized_dataset.csv
