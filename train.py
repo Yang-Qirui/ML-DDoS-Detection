@@ -14,13 +14,16 @@ def train(args):
     loss_fn_dict = {
         "mse": nn.MSELoss()
     }
+    # model.load_state_dict(torch.load("./model.pt"))
     loss_fn = loss_fn_dict[args.loss_fn]
     data = load_npy(args.train_dir)
-    '''TODO: change to 03-11 test data'''
-    train_ratio = 0.8
-    train_size = int(len(data) * train_ratio)
-    train_data = data[:train_size]
-    test_data = data[train_size:]
+    # test_data = load_npy(args.test_dir)
+    train_data = data[:int(0.8 * len(data))]
+    test_data = data[int(0.8 * len(data)):]
+
+    # train_data = data[:int(0.1 * len(data))]
+    # test_data = data[int(0.1 * len(data)):]
+
     train_dataset = DDoSDataset(train_data)
     test_dataset = DDoSDataset(test_data)
     optimizer = torch.optim.Adam(model.parameters(), lr=args.lr)
@@ -61,13 +64,14 @@ def train(args):
 
                 # Assuming a multi-class classification problem
                 pred_out = torch.where(outputs > 0.5, torch.tensor(1), torch.tensor(0))
-            
 
                 total += labels.shape[0] * labels.shape[1]
                 correct += (pred_out == labels).sum().item()
 
         accuracy = 100 * correct / total
+        
         print(f"Test Accuracy: {accuracy} %")
+    # torch.save(model.state_dict(), "./model.pt")
 
 if __name__ == "__main__":
     arg_parser = argparse.ArgumentParser()
@@ -79,8 +83,8 @@ if __name__ == "__main__":
     arg_parser.add_argument("-lr", help="learning rate", default=0.001, type=float)
     arg_parser.add_argument("-train_dir", help="the path of training directory", default="./dataset/CICDDoS2019/01-12", type=str)
     arg_parser.add_argument("-test_dir", help="the path of testing directory", default="./dataset/CICDDoS2019/03-11", type=str)
-    arg_parser.add_argument("-seq_len", help="sequence length of LSTM", default=16, type=int)
-    arg_parser.add_argument("-epoch", help="epoch number", default=100, type=int)
+    arg_parser.add_argument("-seq_len", help="sequence length of LSTM", default=5, type=int)
+    arg_parser.add_argument("-epoch", help="epoch number", default=20, type=int)
     arg_parser.add_argument("-batch_size", help="batch size", default=32, type=int)
 
 

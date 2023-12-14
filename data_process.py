@@ -39,7 +39,7 @@ def load_files_to_tensor(file_name, attack_type, seq_len, train=True):
         False:"/".join([dataset_dir_path, "03-11"])
     }
 
-    feature_cols = ["Destination Port", "Total Length of Fwd Packets", "Total Length of Bwd Packets", "Label"] # features:dst port, byte length [^6] Network Traffic Anomaly Detection Using Recurrent Neural Networks
+    feature_cols = ["Destination Port", "Total Length of Fwd Packets", "Total Length of Bwd Packets", "Label", "Total Fwd Packets", "Total Backward Packets"] # features:dst port, byte length [^6] Network Traffic Anomaly Detection Using Recurrent Neural Networks
 
     csv_path = "/".join([path_dict[train], f"{file_name}.csv"])
     print(f"Start loading {csv_path}, attack type {attack_type}")
@@ -51,6 +51,10 @@ def load_files_to_tensor(file_name, attack_type, seq_len, train=True):
             continue
         port_series = df['Destination Port'].apply(lambda x: min(x, 10000)) # 10000 from [^6] Network Traffic Anomaly Detection Using Recurrent Neural Networks
         # norm_port_series = min_max_norm(port_series) # cannot use min-max norm, since the port can be the same in a single flow
+        pkt_series = (df['Total Fwd Packets'] + df['Total Backward Packets']).apply(lambda x: np.floor(np.log2(x)))
+        pkt_series.replace(-np.inf, pkt_series[pkt_series != -np.inf].min(), inplace=True)
+        pkt_series.replace(np.inf, pkt_series[pkt_series != np.inf].max(), inplace=True)
+
         byte_series = (df['Total Length of Fwd Packets'] + df['Total Length of Bwd Packets']).apply(lambda x: np.floor(np.log2(x))) # if fwd = bwd = 0, will cause -inf
         byte_series.replace(-np.inf, byte_series[byte_series != -np.inf].min(), inplace=True)
         byte_series.replace(np.inf, byte_series[byte_series != np.inf].max(), inplace=True)
@@ -60,7 +64,7 @@ def load_files_to_tensor(file_name, attack_type, seq_len, train=True):
         df.loc[df['Label'] == 'BENIGN', 'Label'] = 0
         df.loc[df['Label'] == attack_type, 'Label'] = 1
 
-        feature_ndarray = np.array([port_series.tolist(), byte_series.tolist(), df['Label'].tolist()])
+        feature_ndarray = np.array([pkt_series.tolist(), byte_series.tolist(), df['Label'].tolist()])
         flow_feature_ndarrays.append(feature_ndarray)
 
     for i, ndarray in enumerate(flow_feature_ndarrays):
@@ -83,15 +87,15 @@ def load_files_to_tensor(file_name, attack_type, seq_len, train=True):
     # print(min_vals, max_vals)
     # flow_feature_ndarrays[:, :, :-1] = (flow_feature_ndarrays[:, :, :-1] - min_vals) / (max_vals - min_vals) 
     
-    np.save("/".join([path_dict[train], f"{attack_type}.npy"]), flow_feature_ndarrays)
+    np.save("/".join([path_dict[train], f"{file_name}-{attack_type}.npy"]), flow_feature_ndarrays)
     return torch.from_numpy(flow_feature_ndarrays)
 
 if __name__ == "__main__":
     print("Start reading training set")
-    load_files_to_tensor("UDPLag", "UDP-lag", 16)
-    load_files_to_tensor("DrDoS_UDP", "DrDoS_UDP", 16)
-    load_files_to_tensor("Syn", "Syn", 16)
-    # print("Start reading testing set")
-    # load_files_to_tensor("UDPLag", "UDP-lag", 16)
-    # load_files_to_tensor("DrDoS_UDP", "DrDoS_UDP", 16)
-    # load_files_to_tensor("Syn", "Syn", 16)
+    load_files_to_tensor("UDPLag", "UDP-lag", 5)
+    load_files_to_tensor("DrDoS_UDP", "DrDoS_UDP", 5)
+    load_files_to_tensor("Syn", "Syn", 5)
+    print("Start reading testing set")
+    load_files_to_tensor("UDPLag", "UDP", 5, False)
+    load_files_to_tensor("UDP", "UDP", 5, False)
+    load_files_to_tensor("Syn", "Syn", 5, False)
